@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PsycheOS - Neural Mind Simulator</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for iconography -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font (Inter & Outfit) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            dark: '#090D16',
+                            card: 'rgba(17, 24, 39, 0.75)',
+                            border: 'rgba(255, 255, 255, 0.1)',
+                            accent: '#6366f1',
+                            teal: '#14b8a6',
+                            amber: '#f59e0b',
+                            rose: '#f43f5e'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Outfit', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #07090e;
+            color: #e2e8f0;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        .glass-panel-glow {
+            position: relative;
+        }
+
+        .glass-panel-glow::before {
+            content: '';
+            position: absolute;
+            inset: -1px;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(20, 184, 166, 0.05), transparent);
+            border-radius: inherit;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* Custom Styled Sliders */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            height: 6px;
+            outline: none;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #818cf8;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(129, 140, 248, 0.7);
+            transition: all 0.2s ease;
+        }
+
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            background: #a5b4fc;
+            box-shadow: 0 0 15px rgba(165, 180, 252, 0.9);
+        }
+
+        /* Glowing Score Aura */
+        .score-aura {
+            transition: box-shadow 0.8s ease, color 0.8s ease;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        /* Animated Pulsing Ring */
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1.05); opacity: 0.4; }
+            100% { transform: scale(0.95); opacity: 0.8; }
+        }
+
+        .pulse-aura {
+            animation: pulse-ring 4s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="min-h-screen text-slate-100 flex flex-col justify-between selection:bg-indigo-500 selection:text-white">
+
+    <!-- Header Navigation -->
+    <header class="w-full glass-panel border-b border-slate-800/80 sticky top-0 z-50 backdrop-blur-md px-4 lg:px-8 py-3 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-teal-400 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                <i class="fa-solid font-bold fa-brain text-white text-lg"></i>
+            </div>
+            <div>
+                <h1 class="font-display font-bold text-xl tracking-wide bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-slate-400">
+                    Psyche<span class="text-indigo-400">OS</span>
+                </h1>
+                <p class="text-xs text-slate-400 font-medium">Human Neural State & Mental Health Simulator</p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-2 sm:space-x-4">
+            <button id="preset-reset" onclick="resetDefaults()" class="text-xs sm:text-sm px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800/50 hover:bg-slate-700/60 text-slate-300 hover:text-white transition flex items-center gap-2">
+                <i class="fa-solid fa-rotate-left"></i> <span class="hidden sm:inline">Reset</span>
+            </button>
+            <button onclick="shareState()" class="text-xs sm:text-sm px-3 py-1.5 rounded-lg bg-indigo-600/80 hover:bg-indigo-600 text-white font-medium transition flex items-center gap-2 shadow-md shadow-indigo-600/20">
+                <i class="fa-solid fa-share-nodes"></i> <span>Export Stats</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="w-full max-w-[1600px] mx-auto p-4 md:p-6 lg:p-8 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- LEFT COLUMN: Lifestyle & Emotional Drivers Controls (4 cols) -->
+        <section class="lg:col-span-4 flex flex-col space-y-5">
+            
+            <!-- Quick Presets -->
+            <div class="glass-panel rounded-2xl p-4 sm:p-5">
+                <h2 class="text-xs font-semibold uppercase tracking-wider text-indigo-400 mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> Neural Archetype Presets
+                </h2>
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 gap-2 text-xs">
+                    <button onclick="loadPreset('flourishing')" class="p-2.5 rounded-xl border border-teal-500/30 bg-teal-950/20 hover:bg-teal-900/40 text-teal-300 font-medium transition text-left flex items-center gap-2">
+                        <i class="fa-solid fa-sun text-teal-400"></i> Flourishing
+                    </button>
+                    <button onclick="loadPreset('burnout')" class="p-2.5 rounded-xl border border-rose-500/30 bg-rose-950/20 hover:bg-rose-900/40 text-rose-300 font-medium transition text-left flex items-center gap-2">
+                        <i class="fa-solid fa-fire text-rose-400"></i> Tech Burnout
+                    </button>
+                    <button onclick="loadPreset('doomscroller')" class="p-2.5 rounded-xl border border-amber-500/30 bg-amber-950/20 hover:bg-amber-900/40 text-amber-300 font-medium transition text-left flex items-center gap-2">
+                        <i class="fa-solid fa-mobile-screen text-amber-400"></i> Doomscroller
+                    </button>
+                    <button onclick="loadPreset('overtrained')" class="p-2.5 rounded-xl border border-purple-500/30 bg-purple-950/20 hover:bg-purple-900/40 text-purple-300 font-medium transition text-left flex items-center gap-2">
+                        <i class="fa-solid fa-dumbbell text-purple-400"></i> Overtrained
+                    </button>
+                    <button onclick="loadPreset('deprived')" class="p-2.5 rounded-xl border border-blue-500/30 bg-blue-950/20 hover:bg-blue-900/40 text-blue-300 font-medium transition text-left flex items-center gap-2">
+                        <i class="fa-solid fa-moon text-blue-400"></i> Sleep Deprived
+                    </button>
+                    <button onclick="loadPreset('zen')" class="p-2.5 rounded-xl border border-emerald-500/30 bg-emerald-950/20 hover:bg-emerald-900/40 text-emerald-300 font-medium transition text-left flex items-center gap-2">
+                        <i class="fa-solid fa-leaf text-emerald-400"></i> Zen Monk
+                    </button>
+                </div>
+            </div>
+
+            <!-- Interactive Sliders Container -->
+            <div class="glass-panel rounded-2xl p-5 flex-1 space-y-6 overflow-y-auto max-h-[700px]">
+                
+                <!-- Section 1: Physical & Biological -->
+                <div>
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800 pb-2 mb-4 flex items-center justify-between">
+                        <span><i class="fa-solid fa-heart-pulse text-rose-400 mr-2"></i> Physical Drivers</span>
+                        <span class="text-[10px] text-slate-500 font-normal">Non-linear impact</span>
+                    </h3>
+                    
+                    <div class="space-y-4">
+                        <!-- Exercise -->
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <label for="slider-exercise" class="font-medium text-slate-300">Physical Exercise</label>
+                                <span class="text-indigo-400 font-semibold" id="val-exercise">4.5 hrs/wk</span>
+                            </div>
+                            <input type="range" id="slider-exercise" min="0" max="18" step="0.5" value="4.5" class="w-full" oninput="updateSim()">
+                            <p class="text-[11px] text-slate-500 mt-1">Optimal: 3 - 6 hrs/wk. &gt;12 hrs causes chronic fatigue penalties.</p>
+                        </div>
+
+                        <!-- Sleep -->
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <label for="slider-sleep" class="font-medium text-slate-300">Daily Sleep Duration</label>
+                                <span class="text-indigo-400 font-semibold" id="val-sleep">7.5 hrs/day</span>
+                            </div>
+                            <input type="range" id="slider-sleep" min="3" max="12" step="0.5" value="7.5" class="w-full" oninput="updateSim()">
+                            <p class="text-[11px] text-slate-500 mt-1">Optimal: 7 - 9 hrs. Sleep deprivation cripples cognitive resilience.</p>
+                        </div>
+
+                        <!-- Nutrition -->
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <label for="slider-nutrition" class="font-medium text-slate-300">Nutrition & Hydration Quality</label>
+                                <span class="text-indigo-400 font-semibold" id="val-nutrition">7 / 10</span>
+                            </div>
+                            <input type="range" id="slider-nutrition" min="1" max="10" step="1" value="7" class="w-full" oninput="updateSim()">
+                        </div>
+
+                        <!-- Screen Time -->
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <label for="slider-screentime" class="font-medium text-slate-300">Screen Time & Social Media</label>
+                                <span class="text-indigo-400 font-semibold" id="val-screentime">3.5 hrs/day</span>
+                            </div>
+                            <input type="range" id="slider-screentime" min="0.5" max="14" step="0.5" value="3.5" class="w-full" oninput="updateSim()">
+                            <p class="text-[11px] text-slate-500 mt-1">&gt;6 hrs accelerates anxiety and neural fragmentation.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2: Psychological & Emotional -->
+                <div>
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800 pb-2 mb-4 flex items-center justify-between">
+                        <span><i class="fa-solid fa-brain text-indigo-400 mr-2"></i> Emotional & Mental Drivers</span>
+                    </h3>
+
+                    <div class="space-y-4">
+                        <!-- Stress Level -->
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <label for="slider-stress" class="font-medium text-slate-300">Perceived Stress & Pressure</label>
+                                <span class="text-indigo-400 font-semibold" id="val-stress">4 / 10</span>
+                            </div>
+                            <input type="range" id="slider-stress" min="1" max="10" step="1" value="4" class="w-full" oninput="updateSim()">
+                        </div>
+
+                        <!-- Social Connection -->
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <label for="slider-social" class="font-medium text-slate-300">Social Connection & Belonging</label>
+                                <span class="text-indigo-400 font-semibold" id="val-social">7 / 10</span>
+                            </div>
+                            <input type="range" id="slider-social" min="1" max="10" step="1" value="7" class="w-full" oninput="updateSim()">
+                        </div>
+
+                        <!-- Mindfulness -->
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <label for="slider-mindfulness" class="font-medium text-slate-300">Mindfulness / Stillness</label>
+                                <span class="text-indigo-400 font-semibold" id="val-mindfulness">15 mins/day</span>
+                            </div>
+                            <input type="range" id="slider-mindfulness" min="0" max="60" step="5" value="15" class="w-full" oninput="updateSim()">
+                        </div>
+
+                        <!-- Purpose / Meaning -->
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <label for="slider-purpose" class="font-medium text-slate-300">Sense of Purpose & Mastery</label>
+                                <span class="text-indigo-400 font-semibold" id="val-purpose">8 / 10</span>
+                            </div>
+                            <input type="range" id="slider-purpose" min="1" max="10" step="1" value="8" class="w-full" oninput="updateSim()">
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- CENTER COLUMN: Interactive Neural Visualizer & Core Metrics (5 cols) -->
+        <section class="lg:col-span-5 flex flex-col space-y-6">
+            
+            <!-- Canvas Simulation Box -->
+            <div class="glass-panel rounded-2xl p-4 relative overflow-hidden flex flex-col items-center justify-center min-h-[360px] lg:min-h-[420px]">
+                
+                <!-- Background Ambient Aura Ring -->
+                <div id="aura-glow" class="absolute w-72 h-72 rounded-full pulse-aura blur-3xl opacity-30 pointer-events-none transition-all duration-1000 bg-teal-500"></div>
+
+                <!-- Live Neural Canvas -->
+                <canvas id="neuralCanvas" class="w-full h-full relative z-10 cursor-pointer" title="Click or tap to stimulate neural flash!"></canvas>
+
+                <!-- Overlay Overlay HUD Badges -->
+                <div class="absolute top-4 left-4 z-20 flex items-center space-x-2">
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-900/80 border border-slate-700/60 text-slate-300">
+                        <span id="neuro-state-dot" class="w-2 h-2 rounded-full bg-teal-400 mr-2 animate-pulse"></span>
+                        <span id="neuro-state-text">SYNAPSE ACTIVE</span>
+                    </span>
+                </div>
+
+                <div class="absolute top-4 right-4 z-20 text-[11px] font-mono text-slate-400 bg-slate-900/80 px-2.5 py-1 rounded-full border border-slate-700/60">
+                    FPS: <span id="fps-counter" class="text-slate-200">60</span>
+                </div>
+
+                <!-- Bottom Neural Dynamic Stats HUD -->
+                <div class="absolute bottom-4 inset-x-4 z-20 grid grid-cols-3 gap-2 bg-slate-950/70 border border-slate-800/80 p-2.5 rounded-xl backdrop-blur-md text-center text-xs">
+                    <div>
+                        <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Dopamine</div>
+                        <div id="neuro-dopamine" class="font-bold text-amber-400 font-mono text-sm">74%</div>
+                    </div>
+                    <div>
+                        <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Serotonin</div>
+                        <div id="neuro-serotonin" class="font-bold text-teal-400 font-mono text-sm">81%</div>
+                    </div>
+                    <div>
+                        <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Cortisol</div>
+                        <div id="neuro-cortisol" class="font-bold text-rose-400 font-mono text-sm">28%</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Score Bar & Sub-Breakdowns -->
+            <div class="glass-panel rounded-2xl p-5 flex flex-col justify-between space-y-5">
+                
+                <div class="flex items-center justify-between">
+                    <div>
+                        <span class="text-xs uppercase tracking-widest text-slate-400 font-semibold">Overall Mental State</span>
+                        <h2 id="overall-status-title" class="text-2xl font-display font-extrabold text-teal-400 transition-colors duration-500">
+                            Flourishing
+                        </h2>
+                    </div>
+
+                    <!-- Main Score Counter Circle -->
+                    <div class="flex flex-col items-center justify-center">
+                        <div id="score-circle-container" class="w-20 h-20 rounded-full border-4 border-teal-500 flex items-center justify-center bg-slate-900/60 shadow-lg shadow-teal-500/20 transition-all duration-700">
+                            <span id="score-value" class="text-3xl font-display font-extrabold text-white">88</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sub-metric Performance Bars -->
+                <div class="space-y-3 pt-2 border-t border-slate-800">
+                    
+                    <!-- Cognitive Energy -->
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-300 font-medium flex items-center gap-1.5">
+                                <i class="fa-solid fa-bolt text-amber-400"></i> Cognitive Energy
+                            </span>
+                            <span id="val-cognitive" class="font-semibold text-slate-300">85%</span>
+                        </div>
+                        <div class="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+                            <div id="bar-cognitive" class="h-full bg-amber-400 transition-all duration-500" style="width: 85%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Emotional Balance -->
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-300 font-medium flex items-center gap-1.5">
+                                <i class="fa-solid fa-scale-balanced text-teal-400"></i> Emotional Balance
+                            </span>
+                            <span id="val-emotional" class="font-semibold text-slate-300">90%</span>
+                        </div>
+                        <div class="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+                            <div id="bar-emotional" class="h-full bg-teal-400 transition-all duration-500" style="width: 90%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Physical Vitality -->
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-300 font-medium flex items-center gap-1.5">
+                                <i class="fa-solid fa-heart text-rose-400"></i> Physical Vitality
+                            </span>
+                            <span id="val-vitality" class="font-semibold text-slate-300">82%</span>
+                        </div>
+                        <div class="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+                            <div id="bar-vitality" class="h-full bg-rose-400 transition-all duration-500" style="width: 82%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Social Fulfillment -->
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-300 font-medium flex items-center gap-1.5">
+                                <i class="fa-solid fa-users text-indigo-400"></i> Social Fulfillment
+                            </span>
+                            <span id="val-social-fulfillment" class="font-semibold text-slate-300">78%</span>
+                        </div>
+                        <div class="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+                            <div id="bar-social" class="h-full bg-indigo-400 transition-all duration-500" style="width: 78%"></div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </section>
+
+        <!-- RIGHT COLUMN: Insights, Diagnostics & Actionable Recommendations (3 cols) -->
+        <section class="lg:col-span-3 flex flex-col space-y-6">
+            
+            <!-- Real-Time Diagnostic Insights -->
+            <div class="glass-panel rounded-2xl p-5 flex-1 flex flex-col">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-indigo-400 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-microscope"></i> Mind Diagnostics & Insights
+                </h3>
+
+                <!-- Insights Scrollable Stream -->
+                <div id="insights-container" class="space-y-3 flex-1 overflow-y-auto max-h-[500px] pr-1">
+                    <!-- Dynamic cards inserted here by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Neuro-Chemical Summary Card -->
+            <div class="glass-panel rounded-2xl p-5 border-l-4 border-indigo-500">
+                <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Neural Equilibrium Summary</h4>
+                <p id="equilibrium-summary" class="text-xs text-slate-400 leading-relaxed">
+                    Your current physiological inputs foster high synaptic plasticity and optimal serotonin stability.
+                </p>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- Notification Toast Modal (Hidden by default) -->
+    <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 glass-panel border border-indigo-500/40 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3">
+        <i id="toast-icon" class="fa-solid fa-circle-check text-indigo-400 text-lg"></i>
+        <span id="toast-message" class="text-xs font-medium">Action completed successfully</span>
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        /* ==========================================================================
+           1. SIMULATION STATE & PARAMETERS
+           ========================================================================== */
+        const state = {
+            exercise: 4.5,     // hours / week
+            sleep: 7.5,        // hours / day
+            nutrition: 7,      // 1 - 10
+            screentime: 3.5,   // hours / day
+            stress: 4,         // 1 - 10
+            social: 7,         // 1 - 10
+            mindfulness: 15,   // mins / day
+            purpose: 8          // 1 - 10
+        };
+
+        const presets = {
+            flourishing: { exercise: 4.5, sleep: 8, nutrition: 8, screentime: 2.5, stress: 3, social: 8, mindfulness: 20, purpose: 9 },
+            burnout: { exercise: 1, sleep: 5, nutrition: 3, screentime: 9, stress: 9, social: 3, mindfulness: 0, purpose: 4 },
+            doomscroller: { exercise: 0.5, sleep: 5.5, nutrition: 4, screentime: 11, stress: 7, social: 2, mindfulness: 0, purpose: 3 },
+            overtrained: { exercise: 15, sleep: 6, nutrition: 8, screentime: 4, stress: 7, social: 5, mindfulness: 0, purpose: 8 },
+            deprived: { exercise: 3, sleep: 4, nutrition: 4, screentime: 7, stress: 8, social: 4, mindfulness: 5, purpose: 5 },
+            zen: { exercise: 5, sleep: 8.5, nutrition: 9, screentime: 1, stress: 2, social: 9, mindfulness: 45, purpose: 9 }
+        };
+
+        let calculatedMetrics = {
+            overallScore: 88,
+            cognitive: 85,
+            emotional: 90,
+            vitality: 82,
+            socialFulfillment: 78,
+            dopamine: 74,
+            serotonin: 81,
+            cortisol: 28,
+            statusLabel: 'Flourishing',
+            themeColor: '#14b8a6', // Teal
+            glowClass: 'shadow-teal-500/30'
+        };
+
+        /* ==========================================================================
+           2. MATHEMATICAL CALCULATION ENGINE
+           ========================================================================== */
+        function calculateMentalHealth() {
+            const { exercise, sleep, nutrition, screentime, stress, social, mindfulness, purpose } = state;
+
+            // Physical Vitality Score (0 - 100)
+            // Exercise curve: optimal 3-6 hrs. Over 12 hrs penalties apply.
+            let exScore = 0;
+            if (exercise <= 5) {
+                exScore = (exercise / 5) * 85 + 15;
+            } else if (exercise <= 8) {
+                exScore = 100;
+            } else {
+                exScore = Math.max(20, 100 - (exercise - 8) * 9); // Overtraining fatigue penalty
+            }
+
+            // Sleep curve: optimal 7-9 hrs. Under 6 or over 10 penalizes score.
+            let sleepScore = 0;
+            if (sleep >= 7 && sleep <= 9) {
+                sleepScore = 100;
+            } else if (sleep < 7) {
+                sleepScore = Math.max(10, 100 - (7 - sleep) * 22);
+            } else {
+                sleepScore = Math.max(50, 100 - (sleep - 9) * 18); // Lethargy penalty
+            }
+
+            const nutScore = nutrition * 10;
+            const vitality = Math.round((exScore * 0.4) + (sleepScore * 0.4) + (nutScore * 0.2));
+
+            // Cognitive Energy Score (0 - 100)
+            // Screen time penalty: > 4 hrs degrades focus rapidly
+            const screenPenalty = screentime > 4 ? Math.min(50, (screentime - 4) * 6.5) : 0;
+            const stressPenalty = (stress - 1) * 8.5;
+            const mindfulnessBonus = Math.min(20, (mindfulness / 30) * 20);
+            
+            const cognitive = Math.max(5, Math.min(100, Math.round(
+                (sleepScore * 0.45) + (purpose * 5.5) + mindfulnessBonus - screenPenalty - (stressPenalty * 0.3)
+            )));
+
+            // Emotional Balance Score (0 - 100)
+            const emotional = Math.max(5, Math.min(100, Math.round(
+                100 - (stress * 7.5) + (social * 3.5) + (mindfulnessBonus * 0.8) + (nutScore * 0.15) - (screenPenalty * 0.4)
+            )));
+
+            // Social Fulfillment Score (0 - 100)
+            const socialFulfillment = Math.max(5, Math.min(100, Math.round(
+                (social * 9) + (purpose * 2) - (screentime > 6 ? 15 : 0)
+            )));
+
+            // Overall Combined Score
+            const overallScore = Math.max(0, Math.min(100, Math.round(
+                (vitality * 0.25) + (cognitive * 0.25) + (emotional * 0.30) + (socialFulfillment * 0.20)
+            )));
+
+            // Neuro-transmitter Approximations (%)
+            const dopamine = Math.max(10, Math.min(98, Math.round(
+                (purpose * 6) + (exScore * 0.3) - (screentime * 2.5) + 30
+            )));
+
+            const serotonin = Math.max(10, Math.min(98, Math.round(
+                (social * 5) + (sleepScore * 0.3) + (mindfulnessBonus * 0.5) + (nutScore * 0.2)
+            )));
+
+            const cortisol = Math.max(5, Math.min(98, Math.round(
+                (stress * 9.5) + (screentime * 2) - (sleepScore * 0.3) - (mindfulness * 0.4)
+            )));
+
+            // Categorization & Color Palette Selection
+            let statusLabel = 'Balanced';
+            let themeColor = '#14b8a6'; // Teal default
+            let glowClass = 'shadow-teal-500/30';
+
+            if (overallScore >= 85) {
+                statusLabel = 'Peak Flourishing';
+                themeColor = '#14b8a6'; // Vibrant Teal
+                glowClass = 'shadow-teal-500/40';
+            } else if (overallScore >= 70) {
+                statusLabel = 'Harmonious & Stable';
+                themeColor = '#6366f1'; // Indigo
+                glowClass = 'shadow-indigo-500/30';
+            } else if (overallScore >= 52) {
+                statusLabel = 'Mild Strain & Fatigue';
+                themeColor = '#f59e0b'; // Amber
+                glowClass = 'shadow-amber-500/30';
+            } else if (overallScore >= 35) {
+                statusLabel = 'High Vulnerability';
+                themeColor = '#f97316'; // Orange
+                glowClass = 'shadow-orange-500/40';
+            } else {
+                statusLabel = 'Burnout / Critical Distress';
+                themeColor = '#f43f5e'; // Rose / Red
+                glowClass = 'shadow-rose-500/50';
+            }
+
+            calculatedMetrics = {
+                overallScore,
+                cognitive,
+                emotional,
+                vitality,
+                socialFulfillment,
+                dopamine,
+                serotonin,
+                cortisol,
+                statusLabel,
+                themeColor,
+                glowClass
+            };
+        }
+
+        /* ==========================================================================
+           3. UI UPDATER & INSIGHT ENGINE
+           ========================================================================== */
+        function updateSim() {
+            // Read inputs
+            state.exercise = parseFloat(document.getElementById('slider-exercise').value);
+            state.sleep = parseFloat(document.getElementById('slider-sleep').value);
+            state.nutrition = parseInt(document.getElementById('slider-nutrition').value);
+            state.screentime = parseFloat(document.getElementById('slider-screentime').value);
+            state.stress = parseInt(document.getElementById('slider-stress').value);
+            state.social = parseInt(document.getElementById('slider-social').value);
+            state.mindfulness = parseInt(document.getElementById('slider-mindfulness').value);
+            state.purpose = parseInt(document.getElementById('slider-purpose').value);
+
+            // Update Value Displays
+            document.getElementById('val-exercise').textContent = `${state.exercise} hrs/wk`;
+            document.getElementById('val-sleep').textContent = `${state.sleep} hrs/day`;
+            document.getElementById('val-nutrition').textContent = `${state.nutrition} / 10`;
+            document.getElementById('val-screentime').textContent = `${state.screentime} hrs/day`;
+            document.getElementById('val-stress').textContent = `${state.stress} / 10`;
+            document.getElementById('val-social').textContent = `${state.social} / 10`;
+            document.getElementById('val-mindfulness').textContent = `${state.mindfulness} mins/day`;
+            document.getElementById('val-purpose').textContent = `${state.purpose} / 10`;
+
+            // Run calculations
+            calculateMentalHealth();
+
+            // Render Output Scores
+            const m = calculatedMetrics;
+            document.getElementById('score-value').textContent = m.overallScore;
+            
+            const statusElem = document.getElementById('overall-status-title');
+            statusElem.textContent = m.statusLabel;
+            statusElem.style.color = m.themeColor;
+
+            const circleContainer = document.getElementById('score-circle-container');
+            circleContainer.style.borderColor = m.themeColor;
+
+            // Render Sub-bars
+            document.getElementById('val-cognitive').textContent = `${m.cognitive}%`;
+            document.getElementById('bar-cognitive').style.width = `${m.cognitive}%`;
+
+            document.getElementById('val-emotional').textContent = `${m.emotional}%`;
+            document.getElementById('bar-emotional').style.width = `${m.emotional}%`;
+
+            document.getElementById('val-vitality').textContent = `${m.vitality}%`;
+            document.getElementById('bar-vitality').style.width = `${m.vitality}%`;
+
+            document.getElementById('val-social-fulfillment').textContent = `${m.socialFulfillment}%`;
+            document.getElementById('bar-social').style.width = `${m.socialFulfillment}%`;
+
+            // Render Neurotransmitter Values
+            document.getElementById('neuro-dopamine').textContent = `${m.dopamine}%`;
+            document.getElementById('neuro-serotonin').textContent = `${m.serotonin}%`;
+            document.getElementById('neuro-cortisol').textContent = `${m.cortisol}%`;
+
+            // Update Ambient Visual Aura
+            const aura = document.getElementById('aura-glow');
+            aura.style.backgroundColor = m.themeColor;
+
+            // Generate Insights & Prescriptions
+            generateDiagnostics();
+        }
+
+        function generateDiagnostics() {
+            const container = document.getElementById('insights-container');
+            container.innerHTML = '';
+
+            const insights = [];
+
+            // Overtraining Insight
+            if (state.exercise > 11) {
+                insights.push({
+                    type: 'warning',
+                    title: 'Overtraining Syndrome Risk',
+                    text: 'Physical activity exceeds 11+ hrs/week. Excessive systemic fatigue raises cortisol and penalizes total cognitive energy.'
+                });
+            } else if (state.exercise < 2) {
+                insights.push({
+                    type: 'warning',
+                    title: 'Physical Sedentary Deficit',
+                    text: 'Low exercise (<2h/wk) decreases baseline dopamine and neuroplasticity. Adding moderate movement boosts mood rapidly.'
+                });
+            } else {
+                insights.push({
+                    type: 'positive',
+                    title: 'Optimal Exercise Cadence',
+                    text: 'Your current training frequency promotes optimal Brain-Derived Neurotrophic Factor (BDNF).'
+                });
+            }
+
+            // Sleep Diagnostics
+            if (state.sleep < 6) {
+                insights.push({
+                    type: 'danger',
+                    title: 'Severe Sleep Deficit',
+                    text: 'Sleeping under 6 hours degrades emotional regulation, memory consolidation, and spikes stress reactivity.'
+                });
+            } else if (state.sleep > 9.5) {
+                insights.push({
+                    type: 'warning',
+                    title: 'Hypersomnia & Lethargy',
+                    text: 'Excessive sleep (>9.5h) can lead to circadian inertia and low daytime momentum.'
+                });
+            }
+
+            // Screen Time / Social Media
+            if (state.screentime > 7) {
+                insights.push({
+                    type: 'danger',
+                    title: 'Digital Overstimulation',
+                    text: 'High screen time (>7h) fragments attention span and over-stimulates cortisol response loops.'
+                });
+            }
+
+            // Stress / Mindfulness Buffer
+            if (state.stress >= 7 && state.mindfulness >= 20) {
+                insights.push({
+                    type: 'positive',
+                    title: 'Mindfulness Buffer Active',
+                    text: 'Daily mindfulness practice is actively mitigating your high stress inputs.'
+                });
+            } else if (state.stress >= 8 && state.mindfulness < 10) {
+                insights.push({
+                    type: 'danger',
+                    title: 'Unbuffered Chronic Stress',
+                    text: 'High stress without mindfulness/stillness practice risks neural exhaustion.'
+                });
+            }
+
+            // Render Insights DOM Elements
+            insights.forEach(item => {
+                const card = document.createElement('div');
+                card.className = `p-3 rounded-xl border text-xs leading-relaxed transition-all duration-300 ${
+                    item.type === 'danger' ? 'bg-rose-950/30 border-rose-800/50 text-rose-200' :
+                    item.type === 'warning' ? 'bg-amber-950/30 border-amber-800/50 text-amber-200' :
+                    'bg-teal-950/30 border-teal-800/50 text-teal-200'
+                }`;
+
+                const icon = item.type === 'danger' ? 'fa-triangle-exclamation text-rose-400' :
+                             item.type === 'warning' ? 'fa-circle-exclamation text-amber-400' :
+                             'fa-circle-check text-teal-400';
+
+                card.innerHTML = `
+                    <div class="font-semibold mb-1 flex items-center gap-1.5">
+                        <i class="fa-solid ${icon}"></i> ${item.title}
+                    </div>
+                    <p class="text-[11px] opacity-90">${item.text}</p>
+                `;
+                container.appendChild(card);
+            });
+
+            // Update Summary Card
+            const summaryElem = document.getElementById('equilibrium-summary');
+            if (calculatedMetrics.overallScore >= 80) {
+                summaryElem.textContent = "Your physiological and emotional inputs are synchronized for optimal flow state, cognitive resilience, and deep recovery.";
+            } else if (calculatedMetrics.overallScore >= 55) {
+                summaryElem.textContent = "Your mental state is stable, but high digital load or stress requires conscious recovery windows to prevent burnout.";
+            } else {
+                summaryElem.textContent = "Warning: Multiple neural strain indicators detected. Prioritize sleep hygiene, reduce digital stimulation, and incorporate restorative breaks.";
+            }
+        }
+
+        function loadPreset(key) {
+            const p = presets[key];
+            if (!p) return;
+
+            document.getElementById('slider-exercise').value = p.exercise;
+            document.getElementById('slider-sleep').value = p.sleep;
+            document.getElementById('slider-nutrition').value = p.nutrition;
+            document.getElementById('slider-screentime').value = p.screentime;
+            document.getElementById('slider-stress').value = p.stress;
+            document.getElementById('slider-social').value = p.social;
+            document.getElementById('slider-mindfulness').value = p.mindfulness;
+            document.getElementById('slider-purpose').value = p.purpose;
+
+            updateSim();
+            triggerPulseEffect();
+            showToast(`Loaded "${key.charAt(0).toUpperCase() + key.slice(1)}" preset state.`);
+        }
+
+        function resetDefaults() {
+            loadPreset('flourishing');
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').textContent = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+        function shareState() {
+            const summary = `PsycheOS Mental Health Rating: ${calculatedMetrics.overallScore}/100 [${calculatedMetrics.statusLabel}] - Vitality: ${calculatedMetrics.vitality}%, Cognitive: ${calculatedMetrics.cognitive}%`;
+            
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(summary);
+                showToast("State summary copied to clipboard!");
+            } else {
+                // Fallback for clipboard copy
+                const el = document.createElement('textarea');
+                el.value = summary;
+                document.body.appendChild(el);
+                el.select();
+                document.execCommand('copy');
+                document.body.removeChild(el);
+                showToast("State summary copied!");
+            }
+        }
+
+        /* ==========================================================================
+           4. HTML5 CANVAS NEURAL NETWORK VISUALIZATION ENGINE
+           ========================================================================== */
+        const canvas = document.getElementById('neuralCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let width, height;
+        let nodes = [];
+        let pulses = [];
+        const NODE_COUNT = 42;
+
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            width = canvas.width = rect.width;
+            height = canvas.height = rect.height;
+            initNodes();
+        }
+
+        class Node {
+            constructor() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.baseRadius = Math.random() * 2.5 + 1.5;
+                this.radius = this.baseRadius;
+                this.vx = (Math.random() - 0.5) * 0.8;
+                this.vy = (Math.random() - 0.5) * 0.8;
+                this.pulseOffset = Math.random() * Math.PI * 2;
+            }
+
+            update(speedMultiplier, agitation) {
+                // Movement with agitation factor
+                this.x += this.vx * speedMultiplier + (Math.random() - 0.5) * agitation * 0.8;
+                this.y += this.vy * speedMultiplier + (Math.random() - 0.5) * agitation * 0.8;
+
+                // Canvas edge bounce
+                if (this.x < 0 || this.x > width) this.vx *= -1;
+                if (this.y < 0 || this.y > height) this.vy *= -1;
+
+                this.pulseOffset += 0.03 * speedMultiplier;
+                this.radius = this.baseRadius + Math.sin(this.pulseOffset) * 0.8;
+            }
+
+            draw(hexColor) {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, Math.max(0.5, this.radius), 0, Math.PI * 2);
+                ctx.fillStyle = hexColor;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = hexColor;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        class Pulse {
+            constructor(startNode, endNode, speed) {
+                this.startNode = startNode;
+                this.endNode = endNode;
+                this.progress = 0;
+                this.speed = speed;
+            }
+
+            update() {
+                this.progress += this.speed;
+            }
+
+            draw(hexColor) {
+                const x = this.startNode.x + (this.endNode.x - this.startNode.x) * this.progress;
+                const y = this.startNode.y + (this.endNode.y - this.startNode.y) * this.progress;
+
+                ctx.beginPath();
+                ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+                ctx.fillStyle = '#ffffff';
+                ctx.shadowBlur = 12;
+                ctx.shadowColor = hexColor;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        function initNodes() {
+            nodes = [];
+            for (let i = 0; i < NODE_COUNT; i++) {
+                nodes.push(new Node());
+            }
+        }
+
+        // Trigger interactive user stimulation burst on click
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+
+            // Spawn dynamic temporary pulses around closest node
+            nodes.forEach(node => {
+                const dist = Math.hypot(node.x - clickX, node.y - clickY);
+                if (dist < 120) {
+                    node.radius = 6;
+                    // Find neighbor
+                    const neighbor = nodes[Math.floor(Math.random() * nodes.length)];
+                    pulses.push(new Pulse(node, neighbor, 0.05));
+                }
+            });
+        });
+
+        function triggerPulseEffect() {
+            for (let i = 0; i < 8; i++) {
+                const n1 = nodes[Math.floor(Math.random() * nodes.length)];
+                const n2 = nodes[Math.floor(Math.random() * nodes.length)];
+                if (n1 !== n2) {
+                    pulses.push(new Pulse(n1, n2, 0.04));
+                }
+            }
+        }
+
+        // FPS Tracker variables
+        let lastFrameTime = performance.now();
+        let frameCount = 0;
+        let fps = 60;
+
+        function animateCanvas(timestamp) {
+            // FPS calculation
+            frameCount++;
+            if (timestamp - lastFrameTime >= 1000) {
+                fps = frameCount;
+                frameCount = 0;
+                lastFrameTime = timestamp;
+                document.getElementById('fps-counter').textContent = fps;
+            }
+
+            ctx.clearRect(0, 0, width, height);
+
+            const score = calculatedMetrics.overallScore;
+            const hexColor = calculatedMetrics.themeColor;
+
+            // Compute physics speed & chaotic agitation based on Cortisol & Overall Score
+            const speedMultiplier = 0.4 + (calculatedMetrics.cortisol / 100) * 1.5;
+            const agitation = calculatedMetrics.cortisol > 65 ? (calculatedMetrics.cortisol - 65) / 25 : 0;
+
+            // Draw Connections / Synapses
+            const maxDistance = 110;
+            for (let i = 0; i < nodes.length; i++) {
+                for (let j = i + 1; j < nodes.length; j++) {
+                    const dx = nodes[i].x - nodes[j].x;
+                    const dy = nodes[i].y - nodes[j].y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < maxDistance) {
+                        const alpha = (1 - dist / maxDistance) * 0.45;
+                        ctx.beginPath();
+                        ctx.moveTo(nodes[i].x, nodes[i].y);
+                        ctx.lineTo(nodes[j].x, nodes[j].y);
+                        ctx.strokeStyle = hexColor;
+                        ctx.globalAlpha = alpha;
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+                        ctx.globalAlpha = 1.0;
+
+                        // Randomly spawn pulses dependent on dopamine state
+                        if (Math.random() < (calculatedMetrics.dopamine / 4000)) {
+                            pulses.push(new Pulse(nodes[i], nodes[j], 0.02 + Math.random() * 0.03));
+                        }
+                    }
+                }
+            }
+
+            // Update & Draw Nodes
+            nodes.forEach(node => {
+                node.update(speedMultiplier, agitation);
+                node.draw(hexColor);
+            });
+
+            // Update & Draw Synaptic Pulses
+            for (let i = pulses.length - 1; i >= 0; i--) {
+                const pulse = pulses[i];
+                pulse.update();
+                pulse.draw(hexColor);
+                if (pulse.progress >= 1) {
+                    pulses.splice(i, 1);
+                }
+            }
+
+            requestAnimationFrame(animateCanvas);
+        }
+
+        /* ==========================================================================
+           5. INITIALIZATION & RESIZE LISTENERS
+           ========================================================================== */
+        window.addEventListener('resize', resizeCanvas);
+
+        window.onload = function() {
+            resizeCanvas();
+            updateSim();
+            requestAnimationFrame(animateCanvas);
+        };
+    </script>
+</body>
+</html>
